@@ -1,0 +1,32 @@
+name: Deploy Kubernetes Cluster
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install Ansible (if not installed)
+        run: |
+          if ! command -v ansible &> /dev/null; then
+            sudo yum install -y epel-release
+            sudo yum install -y ansible
+          else
+            echo "Ansible is already installed"
+          fi
+
+      - name: Run Ansible Playbook (Master Node)
+        run: |
+          ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_master.yml --become
+
+      - name: Run Ansible Playbook (Worker Nodes)
+        run: |
+          set -e
+          ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_worker.yml --become
