@@ -35,11 +35,14 @@
       yum_repository:
         name: kubernetes
         description: Kubernetes Repository
-        baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+        baseurl: https://pkgs.k8s.io/core:/stable:/v1.26/rpm/
         enabled: yes
         gpgcheck: yes
         repo_gpgcheck: yes
-        gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg,https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+        gpgkey: https://pkgs.k8s.io/core:/stable:/v1.26/rpm/repodata/repomd.xml.key
+
+    - name: 패키지 캐시 정리 및 새로고침
+      command: yum clean all && yum makecache
 
     - name: Kubernetes 패키지 설치 (kubeadm, kubelet, kubectl)
       yum:
@@ -54,7 +57,6 @@
         name: kubelet
         enabled: true
 
-    # 방화벽 설정 추가
     - name: Kubernetes Master 방화벽 규칙 추가
       firewalld:
         port: "{{ item }}"
