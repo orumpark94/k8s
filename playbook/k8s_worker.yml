@@ -1,0 +1,55 @@
+- name: Kubernetes Worker Node Setup
+  hosts: workers
+  become: true
+  tasks:
+    - name: 패키지 업데이트
+      yum:
+        name: "*"
+        state: latest
+
+    - name: 필요한 패키지 설치
+      yum:
+        name:
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: present
+
+    - name: containerd 설치
+      yum:
+        name: containerd.io
+        state: present
+
+    - name: containerd 서비스 활성화 및 시작
+      systemd:
+        name: containerd
+        state: started
+        enabled: true
+
+    - name: Kubernetes 패키지 설치 (kubeadm, kubelet, kubectl)
+      yum:
+        name:
+          - kubeadm
+          - kubelet
+          - kubectl
+        state: present
+
+    - name: Kubelet 서비스 활성화
+      systemd:
+        name: kubelet
+        enabled: true
+
+    # 방화벽 설정 추가
+    - name: Kubernetes Worker 방화벽 규칙 추가
+      firewalld:
+        port: "{{ item }}"
+        permanent: true
+        state: enabled
+      with_items:
+        - 10250/tcp
+        - 30000-32767/tcp
+
+    - name: 방화벽 재시작
+      service:
+        name: firewalld
+        state: restarted
