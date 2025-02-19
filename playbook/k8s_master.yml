@@ -15,9 +15,8 @@
           - lvm2
         state: present
 
-      name: Add docker repository
-        shell: |
-        dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+    - name: Add docker repository
+      shell: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
       args:
         creates: /etc/yum.repos.d/docker-ce.repo
 
@@ -71,4 +70,3 @@
       service:
         name: firewalld
         state: restarted
-
