@@ -19,5 +19,8 @@
           repo_gpgcheck=1
           gpgkey=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
 
-    - name: Clean YUM cache and refresh repositories
-      command: yum clean all && yum makecache
+- name: Clean YUM cache
+  command: yum clean all
+
+- name: Refresh YUM cache
+  command: yum makecache
