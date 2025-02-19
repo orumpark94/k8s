@@ -18,8 +18,6 @@ jobs:
           if ! command -v ansible &> /dev/null; then
             sudo yum install -y epel-release
             sudo yum install -y ansible
-          else
-            echo "Ansible is already installed"
           fi
 
       - name: Run SSH Key Setup Playbook
@@ -32,5 +30,8 @@ jobs:
 
       - name: Run Ansible Playbook (Worker Nodes)
         run: |
-          set -e
-          ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_worker.yml --become -vv
+          ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_worker.yml --become
+
+      - name: Run k8s cluster setup
+        run: |
+          ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_cluster.yml --become -vv
