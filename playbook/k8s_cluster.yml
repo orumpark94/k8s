@@ -18,7 +18,7 @@
       when: "'master' in group_names"
 
     - name: Initialize Kubernetes on Master
-      command: kubeadm init --pod-network-cidr=192.168.0.0/16
+      command: kubeadm init --pod-network-cidr=10.244.0.0/16
       register: k8s_init
       run_once: yes
       when: "'master' in group_names and not k8s_installed.stat.exists"
@@ -43,9 +43,22 @@
         mode: '0644'
       when: "'master' in group_names"
 
-    # 4️⃣ 네트워크 플러그인(Calico) 설치
-    - name: Apply Calico CNI
-      shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+    # 4️⃣ Calico 네트워크 플러그인 설치 (네트워크 CIDR 수정)
+    - name: Download Calico CNI manifest
+      get_url:
+        url: https://docs.projectcalico.org/manifests/calico.yaml
+        dest: /tmp/calico.yaml
+      when: "'master' in group_names"
+
+    - name: Modify Calico network CIDR to 10.244.0.0/16
+      replace:
+        path: /tmp/calico.yaml
+        regexp: '192.168.0.0/16'
+        replace: '10.244.0.0/16'
+      when: "'master' in group_names"
+
+    - name: Apply Calico CNI with modified CIDR
+      shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f /tmp/calico.yaml
       args:
         executable: /bin/bash
       when: "'master' in group_names"
@@ -67,4 +80,3 @@
     - name: Join Worker Nodes to Cluster
       command: "{{ hostvars[groups['master'][0]]['join_command'].stdout }}"
       when: "'worker' in group_names and not node_joined.stat.exists"
-
