@@ -23,7 +23,16 @@
       run_once: yes
       when: "'master' in group_names and not k8s_installed.stat.exists"
 
-    # 3️⃣ kubeconfig 설정
+    # 3️⃣ kubeconfig 설정 전 디렉터리 생성
+    - name: Ensure .kube directory exists
+      file:
+        path: /root/.kube
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: "'master' in group_names"
+
     - name: Copy kubeconfig for root user
       copy:
         src: /etc/kubernetes/admin.conf
@@ -36,14 +45,14 @@
 
     # 4️⃣ 네트워크 플러그인(Calico) 설치
     - name: Apply Calico CNI
-      shell: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+      shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
       args:
         executable: /bin/bash
       when: "'master' in group_names"
 
     # 5️⃣ 워커 노드가 마스터에 조인할 수 있도록 Join Command 생성
     - name: Fetch the join command from Master
-      command: kubeadm token create --print-join-command
+      shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command
       register: join_command
       run_once: yes
       when: "'master' in group_names"
@@ -56,6 +65,5 @@
       when: "'worker' in group_names"
 
     - name: Join Worker Nodes to Cluster
-      command: "{{ hostvars['192.168.1.171']['join_command'].stdout }}"
+      command: "{{ hostvars[groups['master'][0]]['join_command'].stdout }}"
       when: "'worker' in group_names and not node_joined.stat.exists"
-
