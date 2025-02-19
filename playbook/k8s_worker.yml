@@ -2,15 +2,42 @@
   hosts: workers
   become: true
   tasks:
-    - name: 필요한 패키지 설치
+    # 1. Docker 공식 레포지토리 추가 (containerd 설치용)
+    - name: Docker 공식 레포지토리 추가
+      shell: |
+        dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+      args:
+        warn: false
+
+    # 2. Kubernetes 공식 레포지토리 추가 (v1.28.15 고정)
+    - name: Kubernetes 공식 레포지토리 추가
+      copy:
+        dest: /etc/yum.repos.d/kubernetes.repo
+        content: |
+          [kubernetes]
+          name=Kubernetes
+          baseurl=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/
+          enabled=1
+          gpgcheck=1
+          repo_gpgcheck=1
+          gpgkey=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
+      register: k8s_repo_added
+
+    # 3. 패키지 캐시 업데이트 (레포지토리 추가 후 필수)
+    - name: 패키지 캐시 업데이트
+      command: yum clean all && yum makecache
+      when: k8s_repo_added.changed
+
+    # 4. 필요한 패키지 설치
+    - name: 필수 패키지 설치
       yum:
         name:
           - yum-utils
           - device-mapper-persistent-data
           - lvm2
         state: present
-      when: "'overlay2' not in ansible_facts['cmdline']['containerd']"
 
+    # 5. containerd 설치
     - name: containerd 설치
       yum:
         name: containerd.io
@@ -22,25 +49,22 @@
         state: started
         enabled: true
 
-    - name: Kubernetes 패키지 설치 (kubeadm, kubelet)
+    # 6. Kubernetes 패키지 설치 (v1.28.15 고정)
+    - name: Kubernetes 패키지 설치 (kubeadm, kubelet v1.28.15)
       yum:
         name:
-          - kubeadm
-          - kubelet
+          - kubeadm-1.28.15
+          - kubelet-1.28.15
         state: present
+        disable_excludes: kubernetes
 
     - name: Kubelet 서비스 활성화
       systemd:
         name: kubelet
         enabled: true
 
-    - name: 방화벽이 실행 중인지 확인
-      command: systemctl is-active firewalld
-      register: firewalld_status
-      changed_when: false
-      ignore_errors: true
-
-    - name: Kubernetes Worker 방화벽 규칙 추가 (firewalld 사용 시)
+    # 7. 방화벽 설정 추가
+    - name: Kubernetes Worker 방화벽 규칙 추가
       firewalld:
         port: "{{ item }}"
         permanent: true
@@ -48,10 +72,8 @@
       with_items:
         - 10250/tcp
         - 30000-32767/tcp
-      when: firewalld_status.rc == 0
 
-    - name: 방화벽 재시작 (firewalld 사용 시)
+    - name: 방화벽 재시작
       service:
         name: firewalld
         state: restarted
-      when: firewalld_status.rc == 0
