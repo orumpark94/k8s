@@ -16,16 +16,7 @@
         creates: /home/runner/.ssh/id_rsa
       become_user: runner
 
-    - name: Fetch generated SSH public key from Ansible Server
-      slurp:
-        src: /home/runner/.ssh/id_rsa.pub
-      register: ansible_ssh_pub_key
-
-    - name: Set fact for SSH public key
-      set_fact:
-        ansible_ssh_pub_key_content: "{{ ansible_ssh_pub_key['content'] | b64decode }}"
-
-- name: Distribute SSH Public Key to Master and Worker Nodes
+- name: Configure SSH Known Hosts on Master and Worker Nodes
   hosts: master, workers
   become: yes
   tasks:
@@ -34,15 +25,6 @@
         path: /root/.ssh
         state: directory
         mode: '0700'
-        owner: root
-        group: root
-
-    - name: Copy Ansible Server's SSH Public Key to authorized_keys
-      lineinfile:
-        path: /root/.ssh/authorized_keys
-        line: "{{ hostvars['ansible_runner']['ansible_ssh_pub_key_content'] }}"
-        create: yes
-        mode: '0600'
         owner: root
         group: root
 
