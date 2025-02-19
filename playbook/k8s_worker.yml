@@ -4,10 +4,7 @@
   tasks:
     # 1. Docker 공식 레포지토리 추가 (containerd 설치용)
     - name: Docker 공식 레포지토리 추가
-      shell: |
-        dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-      args:
-        warn: false
+      shell: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
 
     # 2. Kubernetes 공식 레포지토리 추가 (v1.28.15 고정)
     - name: Kubernetes 공식 레포지토리 추가
@@ -25,7 +22,7 @@
 
     # 3. 패키지 캐시 업데이트 (레포지토리 추가 후 필수)
     - name: 패키지 캐시 업데이트
-      command: yum clean all && yum makecache
+      shell: yum clean all && yum makecache
       when: k8s_repo_added.changed
 
     # 4. 필요한 패키지 설치
