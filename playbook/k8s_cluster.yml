@@ -1,5 +1,5 @@
 - name: Kubernetes Cluster Setup
-  hosts: kubernetes
+  hosts: master:workers
   become: yes
   tasks:
 
