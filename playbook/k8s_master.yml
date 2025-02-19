@@ -1,74 +1,23 @@
-- name: Kubernetes Master Node Setup
+- name: Update Kubernetes Repository
   hosts: master
   become: true
   tasks:
-    - name: 패키지 업데이트
-      yum:
-        name: "*"
-        state: latest
+    - name: Remove old Kubernetes repository
+      file:
+        path: /etc/yum.repos.d/kubernetes.repo
+        state: absent
 
-    - name: 필요한 패키지 설치
-      yum:
-        name:
-          - yum-utils
-          - device-mapper-persistent-data
-          - lvm2
-        state: present
+    - name: Add new Kubernetes repository
+      copy:
+        dest: /etc/yum.repos.d/kubernetes.repo
+        content: |
+          [kubernetes]
+          name=Kubernetes Repository
+          baseurl=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/
+          enabled=1
+          gpgcheck=1
+          repo_gpgcheck=1
+          gpgkey=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
 
-    - name: Add docker repository
-      shell: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-      args:
-        creates: /etc/yum.repos.d/docker-ce.repo
-
-    - name: containerd 설치
-      yum:
-        name: containerd.io
-        state: present
-
-    - name: containerd 서비스 활성화 및 시작
-      systemd:
-        name: containerd
-        state: started
-        enabled: true
-
-    - name: Kubernetes 저장소 추가
-      yum_repository:
-        name: kubernetes
-        description: Kubernetes Repository
-        baseurl: https://pkgs.k8s.io/core:/stable:/v1.26/rpm/
-        enabled: yes
-        gpgcheck: yes
-        repo_gpgcheck: yes
-        gpgkey: https://pkgs.k8s.io/core:/stable:/v1.26/rpm/repodata/repomd.xml.key
-
-    - name: 패키지 캐시 정리 및 새로고침
+    - name: Clean YUM cache and refresh repositories
       command: yum clean all && yum makecache
-
-    - name: Kubernetes 패키지 설치 (kubeadm, kubelet, kubectl)
-      yum:
-        name:
-          - kubeadm
-          - kubelet
-          - kubectl
-        state: present
-
-    - name: Kubelet 서비스 활성화
-      systemd:
-        name: kubelet
-        enabled: true
-
-    - name: Kubernetes Master 방화벽 규칙 추가
-      firewalld:
-        port: "{{ item }}"
-        permanent: true
-        state: enabled
-      with_items:
-        - 6443/tcp
-        - 2379-2380/tcp
-        - 10251/tcp
-        - 10252/tcp
-
-    - name: 방화벽 재시작
-      service:
-        name: firewalld
-        state: restarted
