@@ -2,11 +2,6 @@
   hosts: workers
   become: true
   tasks:
-    - name: 패키지 업데이트
-      yum:
-        name: "*"
-        state: latest
-
     - name: 필요한 패키지 설치
       yum:
         name:
@@ -14,6 +9,7 @@
           - device-mapper-persistent-data
           - lvm2
         state: present
+      when: "'overlay2' not in ansible_facts['cmdline']['containerd']"
 
     - name: containerd 설치
       yum:
@@ -26,12 +22,11 @@
         state: started
         enabled: true
 
-    - name: Kubernetes 패키지 설치 (kubeadm, kubelet, kubectl)
+    - name: Kubernetes 패키지 설치 (kubeadm, kubelet)
       yum:
         name:
           - kubeadm
           - kubelet
-          - kubectl
         state: present
 
     - name: Kubelet 서비스 활성화
@@ -39,8 +34,13 @@
         name: kubelet
         enabled: true
 
-    # 방화벽 설정 추가
-    - name: Kubernetes Worker 방화벽 규칙 추가
+    - name: 방화벽이 실행 중인지 확인
+      command: systemctl is-active firewalld
+      register: firewalld_status
+      changed_when: false
+      ignore_errors: true
+
+    - name: Kubernetes Worker 방화벽 규칙 추가 (firewalld 사용 시)
       firewalld:
         port: "{{ item }}"
         permanent: true
@@ -48,8 +48,10 @@
       with_items:
         - 10250/tcp
         - 30000-32767/tcp
+      when: firewalld_status.rc == 0
 
-    - name: 방화벽 재시작
+    - name: 방화벽 재시작 (firewalld 사용 시)
       service:
         name: firewalld
         state: restarted
+      when: firewalld_status.rc == 0
