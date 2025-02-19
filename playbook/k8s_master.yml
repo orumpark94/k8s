@@ -50,10 +50,21 @@
           - kubectl
         state: present
 
-    - name: Kubelet 서비스 활성화
+    # 🔹 Kubelet 서비스 활성화 및 시작 추가
+    - name: Kubelet 서비스 활성화 및 실행
       systemd:
         name: kubelet
+        state: started
         enabled: true
+
+    # 🔹 containerd 및 kubelet 서비스 재시작 (의존성 관련 문제 방지)
+    - name: containerd 및 kubelet 서비스 재시작
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      with_items:
+        - containerd
+        - kubelet
 
     # 방화벽 설정 추가
     - name: Kubernetes Master 방화벽 규칙 추가
