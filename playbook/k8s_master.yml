@@ -19,8 +19,12 @@
           repo_gpgcheck=1
           gpgkey=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
 
-- name: Clean YUM cache
-  command: yum clean all
+    - name: Clean YUM cache
+      command: yum clean all
+      register: yum_clean_result
+      changed_when: "'No such file or directory' not in yum_clean_result.stderr"
 
-- name: Refresh YUM cache
-  command: yum makecache
+    - name: Refresh YUM cache
+      command: yum makecache
+      register: yum_makecache_result
+      changed_when: "'Metadata cache created' in yum_makecache_result.stdout"
