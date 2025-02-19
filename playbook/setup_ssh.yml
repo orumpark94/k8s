@@ -1,0 +1,43 @@
+- name: Setup SSH Key Authentication
+  hosts: master
+  become: yes
+  tasks:
+    - name: Ensure SSH directory exists
+      file:
+        path: /home/runner/.ssh
+        state: directory
+        mode: '0700'
+        owner: runner
+        group: runner
+
+    - name: Generate SSH key for runner user if not exists
+      command: ssh-keygen -t rsa -b 4096 -f /home/runner/.ssh/id_rsa -N ""
+      args:
+        creates: /home/runner/.ssh/id_rsa
+      become_user: runner
+
+    - name: Fetch generated SSH public key
+      slurp:
+        src: /home/runner/.ssh/id_rsa.pub
+      register: ssh_pub_key
+
+- name: Distribute SSH Public Key to Worker Nodes
+  hosts: workers
+  become: yes
+  tasks:
+    - name: Ensure SSH directory exists
+      file:
+        path: /home/runner/.ssh
+        state: directory
+        mode: '0700'
+        owner: runner
+        group: runner
+
+    - name: Add master's SSH public key to authorized_keys
+      lineinfile:
+        path: /home/runner/.ssh/authorized_keys
+        line: "{{ hostvars['master']['ssh_pub_key']['content'] | b64decode }}"
+        create: yes
+        mode: '0600'
+        owner: runner
+        group: runner
