@@ -1,5 +1,5 @@
 - name: Setup SSH Key Authentication on Ansible Server
-  hosts: ansible
+  hosts: ansible_runner
   become: yes
   tasks:
     - name: Ensure SSH directory exists on Ansible Server
@@ -40,7 +40,7 @@
     - name: Copy Ansible Server's SSH Public Key to authorized_keys
       lineinfile:
         path: /root/.ssh/authorized_keys
-        line: "{{ hostvars['ansible']['ansible_ssh_pub_key_content'] }}"
+        line: "{{ hostvars['ansible_runner']['ansible_ssh_pub_key_content'] }}"
         create: yes
         mode: '0600'
         owner: root
@@ -55,7 +55,7 @@
         group: root
 
     - name: Add Ansible Server's SSH host key to known_hosts
-      shell: "ssh-keyscan -H {{ hostvars['ansible']['ansible_host'] }} >> /root/.ssh/known_hosts"
+      shell: "ssh-keyscan -H {{ hostvars['ansible_runner']['ansible_host'] }} >> /root/.ssh/known_hosts"
       become_user: root
 
     - name: Test SSH connection from Ansible Server to Target Nodes
