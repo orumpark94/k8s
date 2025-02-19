@@ -1,4 +1,3 @@
----
 - name: Fix Kubernetes Node Issues
   hosts: master,workers
   become: yes
@@ -6,13 +5,18 @@
     - name: Gather service facts
       ansible.builtin.service_facts:
 
-    - name: Disable Firewalld
+    - name: Ensure Firewalld is installed
+      ansible.builtin.yum:
+        name: firewalld
+        state: present
+
+    - name: Enable and start Firewalld
       ansible.builtin.systemd:
         name: firewalld
-        state: stopped
-        enabled: no
+        state: started
+        enabled: yes
 
-    - name: Open required Kubernetes ports if firewalld is running
+    - name: Open required Kubernetes ports
       ansible.builtin.firewalld:
         port: "{{ item }}"
         permanent: yes
@@ -20,7 +24,6 @@
       loop:
         - 6443/tcp
         - 10250/tcp
-      when: "'firewalld.service' in ansible_facts.services and ansible_facts.services['firewalld.service'].state == 'running'"
       notify: Reload firewalld
 
     - name: Disable Swap
