@@ -1,0 +1,60 @@
+- name: Kubernetes Cluster Setup
+  hosts: kubernetes
+  become: yes
+  tasks:
+
+    # 1️⃣ containerd 활성화 및 재시작
+    - name: Ensure containerd is running
+      service:
+        name: containerd
+        state: started
+        enabled: yes
+
+    # 2️⃣ 마스터 노드에서 Kubernetes 초기화
+    - name: Check if Kubernetes is already initialized
+      stat:
+        path: /etc/kubernetes/admin.conf
+      register: k8s_installed
+      when: "'master' in group_names"
+
+    - name: Initialize Kubernetes on Master
+      command: kubeadm init --pod-network-cidr=192.168.0.0/16
+      register: k8s_init
+      run_once: yes
+      when: "'master' in group_names and not k8s_installed.stat.exists"
+
+    # 3️⃣ kubeconfig 설정
+    - name: Copy kubeconfig for root user
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /root/.kube/config
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0644'
+      when: "'master' in group_names"
+
+    # 4️⃣ 네트워크 플러그인(Calico) 설치
+    - name: Apply Calico CNI
+      shell: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+      args:
+        executable: /bin/bash
+      when: "'master' in group_names"
+
+    # 5️⃣ 워커 노드가 마스터에 조인할 수 있도록 Join Command 생성
+    - name: Fetch the join command from Master
+      command: kubeadm token create --print-join-command
+      register: join_command
+      run_once: yes
+      when: "'master' in group_names"
+
+    # 6️⃣ Worker 노드에서 마스터에 조인
+    - name: Check if node is already joined
+      stat:
+        path: /etc/kubernetes/kubelet.conf
+      register: node_joined
+      when: "'worker' in group_names"
+
+    - name: Join Worker Nodes to Cluster
+      command: "{{ hostvars['192.168.1.171']['join_command'].stdout }}"
+      when: "'worker' in group_names and not node_joined.stat.exists"
