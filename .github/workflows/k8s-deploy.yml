@@ -22,6 +22,10 @@ jobs:
             echo "Ansible is already installed"
           fi
 
+      - name: Run SSH Key Setup Playbook
+        run: |
+          ansible-playbook -i .github/workflows/inventory.ini playbook/setup_ssh.yml --become
+
       - name: Run Ansible Playbook (Master Node)
         run: |
           ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_master.yml --become
