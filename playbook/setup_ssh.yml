@@ -75,3 +75,4 @@
     - name: Debug SSH test results
       debug:
         msg: "SSH Connection to {{ ansible_host }}: {{ 'Success' if ssh_test.rc == 0 else 'Failed' }}"
+
