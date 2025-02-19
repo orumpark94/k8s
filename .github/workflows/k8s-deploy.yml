@@ -33,4 +33,4 @@ jobs:
       - name: Run Ansible Playbook (Worker Nodes)
         run: |
           set -e
-          ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_worker.yml --become
+          ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_worker.yml --become -vv
