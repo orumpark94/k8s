@@ -6,6 +6,7 @@
       yum:
         name: "*"
         state: latest
+        update_cache: yes
 
     - name: 필요한 패키지 설치
       yum:
@@ -27,9 +28,9 @@
         enabled: true
 
     - name: Kubernetes GPG 키 등록 (최신 공식 경로)
-      command: rpm --import https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
-      args:
-        warn: false
+      rpm_key:
+        state: present
+        key: https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
 
     - name: Kubernetes 저장소 추가
       yum_repository:
@@ -60,6 +61,7 @@
         port: "{{ item }}"
         permanent: true
         state: enabled
+        immediate: yes
       with_items:
         - 6443/tcp
         - 2379-2380/tcp
