@@ -67,3 +67,4 @@
     - name: Join Worker Nodes to Cluster
       command: "{{ hostvars[groups['master'][0]]['join_command'].stdout }}"
       when: "'worker' in group_names and not node_joined.stat.exists"
+
