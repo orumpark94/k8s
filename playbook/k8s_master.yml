@@ -1,30 +1,72 @@
-- name: Update Kubernetes Repository
+- name: Kubernetes Master Node Setup
   hosts: master
   become: true
   tasks:
-    - name: Remove old Kubernetes repository
-      file:
-        path: /etc/yum.repos.d/kubernetes.repo
-        state: absent
+    - name: 패키지 업데이트
+      yum:
+        name: "*"
+        state: latest
 
-    - name: Add new Kubernetes repository
-      copy:
-        dest: /etc/yum.repos.d/kubernetes.repo
-        content: |
-          [kubernetes]
-          name=Kubernetes Repository
-          baseurl=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/
-          enabled=1
-          gpgcheck=1
-          repo_gpgcheck=1
-          gpgkey=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
+    - name: 필요한 패키지 설치
+      yum:
+        name:
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: present
 
-    - name: Clean YUM cache
-      command: yum clean all
-      register: yum_clean_result
-      changed_when: "'No such file or directory' not in yum_clean_result.stderr"
+    - name: containerd 설치
+      yum:
+        name: containerd.io
+        state: present
 
-    - name: Refresh YUM cache
-      command: yum makecache
-      register: yum_makecache_result
-      changed_when: "'Metadata cache created' in yum_makecache_result.stdout"
+    - name: containerd 서비스 활성화 및 시작
+      systemd:
+        name: containerd
+        state: started
+        enabled: true
+
+    - name: Kubernetes GPG 키 등록 (최신 공식 경로)
+      command: rpm --import https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
+      args:
+        warn: false
+
+    - name: Kubernetes 저장소 추가
+      yum_repository:
+        name: kubernetes
+        description: Kubernetes Repository
+        baseurl: https://pkgs.k8s.io/core:/stable:/v1.28/rpm/
+        enabled: yes
+        gpgcheck: yes
+        repo_gpgcheck: yes
+        gpgkey: https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
+
+    - name: Kubernetes 패키지 설치 (kubeadm, kubelet, kubectl)
+      yum:
+        name:
+          - kubeadm
+          - kubelet
+          - kubectl
+        state: present
+
+    - name: Kubelet 서비스 활성화
+      systemd:
+        name: kubelet
+        enabled: true
+
+    # 방화벽 설정 추가
+    - name: Kubernetes Master 방화벽 규칙 추가
+      firewalld:
+        port: "{{ item }}"
+        permanent: true
+        state: enabled
+      with_items:
+        - 6443/tcp
+        - 2379-2380/tcp
+        - 10251/tcp
+        - 10252/tcp
+
+    - name: 방화벽 재시작
+      service:
+        name: firewalld
+        state: restarted
