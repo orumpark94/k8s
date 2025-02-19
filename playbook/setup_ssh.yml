@@ -21,6 +21,19 @@
         src: /home/runner/.ssh/id_rsa.pub
       register: ssh_pub_key
 
+    - name: Ensure known_hosts file exists
+      file:
+        path: /home/runner/.ssh/known_hosts
+        state: touch
+        mode: '0644'
+        owner: runner
+        group: runner
+
+    - name: Add worker nodes' SSH host keys to known_hosts
+      shell: "ssh-keyscan -H {{ item }} >> /home/runner/.ssh/known_hosts"
+      loop: "{{ groups['workers'] }}"
+      become_user: runner
+
 - name: Distribute SSH Public Key to Worker Nodes
   hosts: workers
   become: yes
@@ -41,3 +54,24 @@
         mode: '0600'
         owner: runner
         group: runner
+
+    - name: Ensure known_hosts file exists
+      file:
+        path: /home/runner/.ssh/known_hosts
+        state: touch
+        mode: '0644'
+        owner: runner
+        group: runner
+
+    - name: Add master's SSH host key to known_hosts
+      shell: "ssh-keyscan -H {{ hostvars['master']['ansible_host'] }} >> /home/runner/.ssh/known_hosts"
+      become_user: runner
+
+    - name: Test SSH connection from master to workers
+      command: ssh -o BatchMode=yes runner@{{ ansible_host }} exit
+      register: ssh_test
+      ignore_errors: yes
+
+    - name: Debug SSH test results
+      debug:
+        msg: "SSH Connection to {{ ansible_host }}: {{ 'Success' if ssh_test.rc == 0 else 'Failed' }}"
