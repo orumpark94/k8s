@@ -3,32 +3,39 @@
   become: yes
   tasks:
 
-    - name: Ensure containerd is running
-      service:
+    - name: Ensure containerd is installed and running
+      yum:
+        name: containerd.io
+        state: present
+
+    - name: Enable and start containerd service
+      systemd:
         name: containerd
         state: started
         enabled: yes
 
-    - name: Generate containerd config file
+    - name: Generate containerd config file if not exists
       command: containerd config default > /etc/containerd/config.toml
       args:
         creates: /etc/containerd/config.toml
 
-    - name: Update SystemdCgroup to true
+    - name: Ensure SystemdCgroup is set to true in containerd config
       replace:
         path: /etc/containerd/config.toml
         regexp: 'SystemdCgroup = false'
         replace: 'SystemdCgroup = true'
+      register: containerd_config_updated
 
-    - name: Restart containerd and kubelet
-      service:
+    - name: Restart containerd and kubelet if config changed
+      systemd:
         name: "{{ item }}"
         state: restarted
       loop:
         - containerd
         - kubelet
+      when: containerd_config_updated.changed
 
-    - name: Check if Kubernetes is already initialized
+    - name: Check if Kubernetes is already initialized (Master)
       stat:
         path: /etc/kubernetes/admin.conf
       register: k8s_installed
@@ -39,7 +46,7 @@
       register: k8s_init
       when: "'master' in group_names and not k8s_installed.stat.exists"
 
-    - name: Ensure .kube directory exists
+    - name: Ensure .kube directory exists (Master)
       file:
         path: /root/.kube
         state: directory
@@ -48,7 +55,7 @@
         mode: '0755'
       when: "'master' in group_names"
 
-    - name: Copy kubeconfig for root user
+    - name: Copy kubeconfig for root user (Master)
       copy:
         src: /etc/kubernetes/admin.conf
         dest: /root/.kube/config
@@ -58,20 +65,20 @@
         mode: '0644'
       when: "'master' in group_names"
 
-    - name: Download Calico CNI manifest
+    - name: Download Calico CNI manifest (Master)
       get_url:
         url: https://docs.projectcalico.org/manifests/calico.yaml
         dest: /tmp/calico.yaml
       when: "'master' in group_names"
 
-    - name: Modify Calico network CIDR to 10.244.0.0/16
+    - name: Modify Calico network CIDR to 10.244.0.0/16 (Master)
       replace:
         path: /tmp/calico.yaml
         regexp: '192.168.0.0/16'
         replace: '10.244.0.0/16'
       when: "'master' in group_names"
 
-    - name: Apply Calico CNI with modified CIDR
+    - name: Apply Calico CNI with modified CIDR (Master)
       shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f /tmp/calico.yaml
       args:
         executable: /bin/bash
@@ -92,7 +99,7 @@
         msg: "{{ worker_join_command }}"
       when: "'workers' in group_names"
 
-    - name: Check if node is already joined
+    - name: Check if worker node is already joined
       stat:
         path: /etc/kubernetes/kubelet.conf
       register: node_joined
