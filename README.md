@@ -16,12 +16,12 @@ Master Node (192.168.1.171)
 
 Worker Nodes (192.168.1.177, 192.168.1.178)
 
-3. GitHub Actions 설정
+2. GitHub Actions 설정
 .github/workflows/k8s_deploy.yaml에서 GitHub Actions Workflow 작성
 
 .github/workflows/inventory.ini에서 Ansible 관리 대상 Kubernetes 서버 정의
 
-5. 각 시스템 간의 SSH 연결 설정
+3. 각 시스템 간의 SSH 연결 설정
    
 setup_ssh.yml 파일로 각 노드와 ansible 서버와의 연결
 
@@ -30,7 +30,7 @@ setup_ssh.yml 파일로 각 노드와 ansible 서버와의 연결
 fix-k8s-cluster.yml 파일을 위한 기본 설정 자동 적용 
 
 5. Kubernetes 클러스터 구성
-6. 
+ 
 playbook/k8s_cluster.yml 파일을 이용한 cluster 구성
 
 worker node cluster에 join
@@ -39,7 +39,7 @@ calico CNI 적용
 
 k8s_master.yml , k8s_worker.yml 파일을 이용한 각 node에 서비스 설치 및 기본 설정
 
-8. Nginx 어플리케이션 배포
+6. Nginx 어플리케이션 배포
 
 Kubernetes 매니페스트nginx-deployment.yml를 적용하여 Nginx 배포
 
