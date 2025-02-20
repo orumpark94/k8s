@@ -5,7 +5,7 @@
   tasks:
     - name: Copy Kubernetes manifests to Master Node
       copy:
-        src: "manifests/nginx-deployment.yml"
+        src: /home/runner/actions-runner/_work/k8s/k8s/manifests/nginx-deployment.yml
         dest: "/tmp/nginx-deployment.yml"
 
     - name: Apply Kubernetes manifests (Deployment & Service)
