@@ -1,0 +1,21 @@
+테스트 진행중 문제 사항
+
+1.  containerd - systemdcgroup 설정 문제
+
+containerd는 설치시 /etc/containerd/config.toml 파일이 없어도 기본값을 사용하여 컨테이너를 실행합니다.
+기본값 파일 복사 방법 containerd config default > /etc/containerd/config.toml
+
+현재 문제가 발생한 이유는 SystemdCgroup 설정이 false로 되어 있어서 문제가 발생하였고,
+공식 문서에서 또한 SystemdCgroup 값을 true로 설정하길 권고 하고 있다.
+( 이는 설정은 모든 master node 및 worker node에 동일하게 적용되어야 한다 )
+
+false로 설정이 되어 있거나, 설정값이 들어가 있지 않다면, CNI 네트워크가 지속적으로 끊기게 되고 이로 인하여 k8s안에 있는 component들이 죽게 된다.
+이로 인하여 문제를 파악하기 어려워짐 ( 모든 component 들이 죽기에 원인을 찾기 힘듬)
+
+2. k8s init 시 CIDR Network 설정
+
+k8s에 cluster를 init 할 경우, cidr 값을 지정해줘야 하는데, 이부분에 있어서 기존 로컬에서 사용하는 network와 같은 대역으로 겹치지 않도록 주의하여야 한다.
+
+ex) ens34 : 192.168.1.xxx /24 사용
+ex) k8s cluster 안 노드끼리의 통신에 사용하는 네트워크 주소가 위 ens34 주소와 완전 다른 대역대로 설정해줘야함
+
