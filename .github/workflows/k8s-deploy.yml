@@ -39,3 +39,11 @@ jobs:
       - name: Run k8s cluster setup
         run: |
           ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_cluster.yml --become -vv
+
+
+      - name: Deploy Nginx to Kubernetes  # 🔥 Nginx 배포 Playbook 실행
+        run: |
+          ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_deploy_nginx.yml --become -vv
+
+
+          
