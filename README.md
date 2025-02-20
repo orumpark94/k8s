@@ -17,6 +17,7 @@ Master Node (192.168.1.171)
 Worker Nodes (192.168.1.177, 192.168.1.178)
 
 2. GitHub Actions 설정
+
 .github/workflows/k8s_deploy.yaml에서 GitHub Actions Workflow 작성
 
 .github/workflows/inventory.ini에서 Ansible 관리 대상 Kubernetes 서버 정의
@@ -25,7 +26,7 @@ Worker Nodes (192.168.1.177, 192.168.1.178)
    
 setup_ssh.yml 파일로 각 노드와 ansible 서버와의 연결
 
-4.k8s 구성을 위한 기본 설정 적용
+4. k8s 구성을 위한 기본 설정 적용
 
 fix-k8s-cluster.yml 파일을 위한 기본 설정 자동 적용 
 
