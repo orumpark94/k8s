@@ -3,14 +3,32 @@
   become: yes
   tasks:
 
-    # 1️⃣ containerd 활성화 및 재시작
+
     - name: Ensure containerd is running
       service:
         name: containerd
         state: started
         enabled: yes
 
-    # 2️⃣ 마스터 노드에서 Kubernetes 초기화
+    - name: Generate containerd config file
+      command: containerd config default > /etc/containerd/config.toml
+      args:
+        creates: /etc/containerd/config.toml
+
+    - name: Update SystemdCgroup to true
+      replace:
+        path: /etc/containerd/config.toml
+        regexp: 'SystemdCgroup = false'
+        replace: 'SystemdCgroup = true'
+
+    - name: Restart containerd and kubelet
+      service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - containerd
+        - kubelet
+
     - name: Check if Kubernetes is already initialized
       stat:
         path: /etc/kubernetes/admin.conf
@@ -23,7 +41,6 @@
       run_once: yes
       when: "'master' in group_names and not k8s_installed.stat.exists"
 
-    # 3️⃣ kubeconfig 설정 전 디렉터리 생성
     - name: Ensure .kube directory exists
       file:
         path: /root/.kube
@@ -43,7 +60,6 @@
         mode: '0644'
       when: "'master' in group_names"
 
-    # 4️⃣ Calico 네트워크 플러그인 설치 (네트워크 CIDR 수정)
     - name: Download Calico CNI manifest
       get_url:
         url: https://docs.projectcalico.org/manifests/calico.yaml
@@ -63,14 +79,12 @@
         executable: /bin/bash
       when: "'master' in group_names"
 
-    # 5️⃣ 워커 노드가 마스터에 조인할 수 있도록 Join Command 생성
     - name: Fetch the join command from Master
       shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command
       register: join_command
       run_once: yes
       when: "'master' in group_names"
 
-    # 6️⃣ Worker 노드에서 마스터에 조인
     - name: Check if node is already joined
       stat:
         path: /etc/kubernetes/kubelet.conf
@@ -80,7 +94,3 @@
     - name: Join Worker Nodes to Cluster
       command: "{{ hostvars[groups['master'][0]]['join_command'].stdout }}"
       when: "'worker' in group_names and not node_joined.stat.exists"
-
-
-
-
