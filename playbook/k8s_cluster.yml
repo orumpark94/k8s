@@ -87,17 +87,21 @@
     - name: Fetch the join command from Master
       shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command
       register: join_command
+      run_once: true
+      delegate_to: 192.168.1.171
       when: "'master' in group_names"
 
     - name: Store join command as fact
       set_fact:
         worker_join_command: "{{ join_command.stdout }}"
+      run_once: true
+      delegate_to: 192.168.1.171
       when: "'master' in group_names"
 
     - name: Debug join command (for troubleshooting)
       debug:
         msg: "{{ worker_join_command }}"
-      when: "'workers' in group_names"
+      when: "'workers' in group_names and worker_join_command is defined"
 
     - name: Check if worker node is already joined
       stat:
@@ -107,4 +111,4 @@
 
     - name: Join Worker Nodes to Cluster
       command: "{{ worker_join_command }}"
-      when: "'workers' in group_names and not node_joined.stat.exists"
+      when: "'workers' in group_names and not node_joined.stat.exists and worker_join_command is defined"
