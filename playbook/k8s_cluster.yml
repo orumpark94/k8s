@@ -3,7 +3,6 @@
   become: yes
   tasks:
 
-
     - name: Ensure containerd is running
       service:
         name: containerd
@@ -38,7 +37,6 @@
     - name: Initialize Kubernetes on Master
       command: kubeadm init --pod-network-cidr=10.244.0.0/16
       register: k8s_init
-      run_once: yes
       when: "'master' in group_names and not k8s_installed.stat.exists"
 
     - name: Ensure .kube directory exists
@@ -82,15 +80,24 @@
     - name: Fetch the join command from Master
       shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command
       register: join_command
-      run_once: yes
       when: "'master' in group_names"
+
+    - name: Store join command as fact
+      set_fact:
+        worker_join_command: "{{ join_command.stdout }}"
+      when: "'master' in group_names"
+
+    - name: Debug join command (for troubleshooting)
+      debug:
+        msg: "{{ worker_join_command }}"
+      when: "'workers' in group_names"
 
     - name: Check if node is already joined
       stat:
         path: /etc/kubernetes/kubelet.conf
       register: node_joined
-      when: "'worker' in group_names"
+      when: "'workers' in group_names"
 
     - name: Join Worker Nodes to Cluster
-      command: "{{ hostvars[groups['master'][0]]['join_command'].stdout }}"
-      when: "'worker' in group_names and not node_joined.stat.exists"
+      command: "{{ worker_join_command }}"
+      when: "'workers' in group_names and not node_joined.stat.exists"
