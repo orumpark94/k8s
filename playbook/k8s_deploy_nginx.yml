@@ -1,6 +1,6 @@
 ---
 - name: Deploy Nginx on Kubernetes
-  hosts: k8s_master
+  hosts: master
   become: yes
   tasks:
     - name: Copy Kubernetes manifests to Master Node
