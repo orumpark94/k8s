@@ -47,3 +47,14 @@ Container Runtime은 containerd, CNI는 Calico를 사용하며, GitHub Actions�
 # 결과 
 
 ![image](https://github.com/user-attachments/assets/f6a1d89c-43e5-432d-9f9c-006b30e2c466)
+
+
+# 추가 테스트
+
+   k8s 클러스터 내의 node2를 off 시키면 나머지 node 1이 혼자서 웹 서버 서비스를 진행함
+
+   ![image](https://github.com/user-attachments/assets/b3d255ac-f296-496a-b68d-ca0e8787b67f)
+
+![image](https://github.com/user-attachments/assets/ca7ddc51-c2e5-40cb-80b1-a6a53f8be8eb)
+
+   추가적으로 192.168.1.178의 ip로 현재 구성 되었기에 192.168.1.178 node가 죽었지만, cluster 구성으로 192.168.1.178 ip로 접근하더라도 서비스 유지 가능
