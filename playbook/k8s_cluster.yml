@@ -48,3 +48,4 @@
     - name: Join Worker Nodes to Cluster
       command: "{{ worker_join_command }}"
       when: "'workers' in group_names and not node_joined.stat.exists and worker_join_command is defined"
+
