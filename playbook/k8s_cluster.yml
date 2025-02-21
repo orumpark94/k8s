@@ -44,7 +44,7 @@
         chown $(id -u):$(id -g) $HOME/.kube/config
       when: "'master' in group_names and not kubeadm_initialized.stat.exists"
 
-    # ✅ Kubernetes Join 과정 시작
+    # ✅ Kubernetes Join 과정 (마스터에서 토큰 자동 생성)
     - name: Generate kubeadm join token if none exists (Master Node)
       command: kubeadm token create --print-join-command
       register: kubeadm_join_cmd
@@ -65,6 +65,7 @@
         msg: "Worker Node Join Command: {{ worker_join_command if worker_join_command else 'No join command received' }}"
       when: "'workers' in group_names"
 
+    # ✅ Worker 노드가 이미 조인된 경우 처리
     - name: Check if worker node is already joined
       stat:
         path: /etc/kubernetes/kubelet.conf
@@ -93,6 +94,7 @@
         - "'workers' in group_names"
         - node_joined.stat.exists
 
+    # ✅ 최신 토큰을 이용하여 Worker 노드를 클러스터에 조인
     - name: Join Worker Nodes to Cluster
       command: "{{ worker_join_command }}"
       when: 
@@ -100,4 +102,3 @@
         - not node_joined.stat.exists
         - worker_join_command is defined
       changed_when: false
-
