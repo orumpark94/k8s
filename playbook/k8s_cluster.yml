@@ -38,35 +38,21 @@
       when: "'master' in group_names and not kubeadm_initialized.stat.exists"
 
     - name: Setup kubeconfig for root user (Master Node)
-      command: >
-        cp -i /etc/kubernetes/admin.conf $HOME/.kube/config &&
+      shell: |
+        mkdir -p $HOME/.kube
+        cp /etc/kubernetes/admin.conf $HOME/.kube/config
         chown $(id -u):$(id -g) $HOME/.kube/config
       when: "'master' in group_names and not kubeadm_initialized.stat.exists"
 
     # ✅ Kubernetes Join 과정 시작
-    - name: Verify kubeadm token exists (Master Node)
-      command: kubeadm token list
-      register: token_list
-      changed_when: false
-      ignore_errors: true
-      when: "'master' in group_names"
-
     - name: Generate kubeadm join token if none exists (Master Node)
-      command: kubeadm token create
-      when: "'master' in group_names and 'No token found' in token_list.stdout"
-
-    - name: Fetch the join command from Master
       command: kubeadm token create --print-join-command
-      environment:
-        KUBECONFIG: /etc/kubernetes/admin.conf
-      register: join_command
-      run_once: true
+      register: kubeadm_join_cmd
       when: "'master' in group_names"
 
-    - name: Ensure join command is available for Worker Nodes
+    - name: Set join command as fact (Master Node)
       set_fact:
-        worker_join_command: "{{ join_command.stdout | default('') }}"
-      run_once: true
+        worker_join_command: "{{ kubeadm_join_cmd.stdout }}"
       when: "'master' in group_names"
 
     - name: Propagate join command to Worker Nodes
