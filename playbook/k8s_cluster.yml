@@ -100,3 +100,4 @@
         - not node_joined.stat.exists
         - worker_join_command is defined
       changed_when: false
+
