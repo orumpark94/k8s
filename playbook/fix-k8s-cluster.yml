@@ -75,11 +75,11 @@
     #    regexp: 'SystemdCgroup = false'
     #    replace: 'SystemdCgroup = true'
 
-    - name: Restart and enable containerd
-      ansible.builtin.systemd:
-        name: containerd
-        state: restarted
-        enabled: yes
+    #- name: Restart and enable containerd
+    #  ansible.builtin.systemd:
+    #    name: containerd
+    #    state: restarted
+    #    enabled: yes
 
     - name: Verify containerd is running
       ansible.builtin.command: systemctl is-active containerd
