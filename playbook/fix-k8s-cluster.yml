@@ -64,16 +64,16 @@
       ansible.builtin.command: sysctl --system
       changed_when: false
 
-    - name: Ensure containerd config.toml exists
-      ansible.builtin.command: containerd config default > /etc/containerd/config.toml
-      args:
-        creates: /etc/containerd/config.toml
+    #- name: Ensure containerd config.toml exists
+    #  ansible.builtin.command: containerd config default > /etc/containerd/config.toml
+    #  args:
+    #    creates: /etc/containerd/config.toml
 
-    - name: Set SystemdCgroup in containerd config
-      ansible.builtin.replace:
-        path: /etc/containerd/config.toml
-        regexp: 'SystemdCgroup = false'
-        replace: 'SystemdCgroup = true'
+    #- name: Set SystemdCgroup in containerd config
+    #  ansible.builtin.replace:
+    #    path: /etc/containerd/config.toml
+    #    regexp: 'SystemdCgroup = false'
+    #    replace: 'SystemdCgroup = true'
 
     - name: Restart and enable containerd
       ansible.builtin.systemd:

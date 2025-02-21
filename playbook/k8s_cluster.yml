@@ -3,15 +3,41 @@
   become: yes
   tasks:
 
+    # ✅ containerd 설정 (Kubernetes 조인 전에 적용)
+    - name: Ensure containerd config.toml exists
+      ansible.builtin.command: containerd config default > /etc/containerd/config.toml
+      args:
+        creates: /etc/containerd/config.toml
+
+    - name: Set SystemdCgroup in containerd config
+      ansible.builtin.replace:
+        path: /etc/containerd/config.toml
+        regexp: 'SystemdCgroup = false'
+        replace: 'SystemdCgroup = true'
+
+    - name: Restart and enable containerd
+      ansible.builtin.systemd:
+        name: containerd
+        state: restarted
+        enabled: yes
+
+    - name: Verify containerd is running
+      ansible.builtin.command: systemctl is-active containerd
+      register: containerd_status
+      failed_when: containerd_status.stdout != 'active'
+
+    # ✅ Kubernetes Join 과정 시작
     - name: Fetch the join command from Master
-      shell: "export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command"
+      command: kubeadm token create --print-join-command
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
       register: join_command
       run_once: true
       when: "'master' in group_names"
 
     - name: Ensure join command is available for Worker Nodes
       set_fact:
-        worker_join_command: "{{ join_command.stdout }}"
+        worker_join_command: "{{ join_command.stdout | default('') }}"
       run_once: true
       when: "'master' in group_names"
 
@@ -22,7 +48,7 @@
 
     - name: Debug worker_join_command on Worker Nodes
       debug:
-        msg: "{{ worker_join_command | default('worker_join_command is not set') }}"
+        msg: "Worker Node Join Command: {{ worker_join_command if worker_join_command else 'No join command received' }}"
       when: "'workers' in group_names"
 
     - name: Check if worker node is already joined
@@ -59,3 +85,4 @@
         - "'workers' in group_names"
         - not node_joined.stat.exists
         - worker_join_command is defined
+      changed_when: false
