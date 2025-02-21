@@ -88,14 +88,14 @@
       shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command
       register: join_command
       run_once: true
-      delegate_to: 192.168.1.171
+      delegate_to: 192.168.1.140
       when: "'master' in group_names"
 
     - name: Store join command as fact
       set_fact:
         worker_join_command: "{{ join_command.stdout }}"
       run_once: true
-      delegate_to: 192.168.1.171
+      delegate_to: 192.168.1.140
       when: "'master' in group_names"
 
     - name: Debug join command (for troubleshooting)
