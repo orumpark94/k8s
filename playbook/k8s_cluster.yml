@@ -12,7 +12,7 @@
     - name: Store join command as fact globally
       set_fact:
         worker_join_command: "{{ hostvars['192.168.1.140']['join_command']['stdout'] }}"
-      when: "'master' in group_names"
+      run_once: true
 
     - name: Debug worker_join_command on Worker Nodes
       debug:
