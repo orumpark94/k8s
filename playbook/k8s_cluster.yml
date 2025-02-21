@@ -1,46 +1,50 @@
-- name: Fetch the join command from Master
-  shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command
-  register: join_command
-  run_once: true
-  when: "'master' in group_names"
+- name: Kubernetes Cluster Setup
+  hosts: master:workers
+  become: yes
+  tasks:
 
-- name: Store join command as fact for all nodes
-  set_fact:
-    worker_join_command: "{{ join_command.stdout }}"
-  run_once: true
-  when: "'master' in group_names"
+    - name: Fetch the join command from Master
+      shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command
+      register: join_command
+      run_once: true
+      when: "'master' in group_names"
 
-- name: Debug join command (for verification)
-  debug:
-    msg: "{{ worker_join_command }}"
-  when: "'workers' in group_names and worker_join_command is defined"
+    - name: Store join command as fact for all nodes
+      set_fact:
+        worker_join_command: "{{ join_command.stdout }}"
+      when: "'master' in group_names"
 
-- name: Debug group_names (for verification)
-  debug:
-    var: group_names
+    - name: Debug join command (for verification)
+      debug:
+        msg: "{{ worker_join_command }}"
+      when: "'workers' in group_names and worker_join_command is defined"
 
-- name: Check if worker node is already joined
-  stat:
-    path: /etc/kubernetes/kubelet.conf
-  register: node_joined
-  when: "'workers' in group_names"
+    - name: Debug group_names (for verification)
+      debug:
+        var: group_names
 
-- name: Reset Kubernetes on Worker Nodes if already joined
-  command: kubeadm reset -f
-  when: "'workers' in group_names and node_joined.stat.exists"
+    - name: Check if worker node is already joined
+      stat:
+        path: /etc/kubernetes/kubelet.conf
+      register: node_joined
+      when: "'workers' in group_names"
 
-- name: Remove old CNI network config (Worker Nodes)
-  file:
-    path: /etc/cni/net.d
-    state: absent
-  when: "'workers' in group_names and node_joined.stat.exists"
+    - name: Reset Kubernetes on Worker Nodes if already joined
+      command: kubeadm reset -f
+      when: "'workers' in group_names and node_joined.stat.exists"
 
-- name: Restart kubelet (Worker Nodes)
-  systemd:
-    name: kubelet
-    state: restarted
-  when: "'workers' in group_names and node_joined.stat.exists"
+    - name: Remove old CNI network config (Worker Nodes)
+      file:
+        path: /etc/cni/net.d
+        state: absent
+      when: "'workers' in group_names and node_joined.stat.exists"
 
-- name: Join Worker Nodes to Cluster
-  command: "{{ worker_join_command }}"
-  when: "'workers' in group_names and not node_joined.stat.exists and worker_join_command is defined"
+    - name: Restart kubelet (Worker Nodes)
+      systemd:
+        name: kubelet
+        state: restarted
+      when: "'workers' in group_names and node_joined.stat.exists"
+
+    - name: Join Worker Nodes to Cluster
+      command: "{{ worker_join_command }}"
+      when: "'workers' in group_names and not node_joined.stat.exists and worker_join_command is defined"
