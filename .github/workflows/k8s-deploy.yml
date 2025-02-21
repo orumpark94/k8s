@@ -46,3 +46,6 @@ jobs:
       #    ansible-playbook -i .github/workflows/inventory.ini playbook/k8s_deploy_nginx.yml --become -vv
 
 
+
+
+      
