@@ -1,114 +1,46 @@
-- name: Kubernetes Cluster Setup
-  hosts: master:workers
-  become: yes
-  tasks:
+- name: Fetch the join command from Master
+  shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command
+  register: join_command
+  run_once: true
+  when: "'master' in group_names"
 
-    - name: Ensure containerd is installed and running
-      yum:
-        name: containerd.io
-        state: present
+- name: Store join command as fact for all nodes
+  set_fact:
+    worker_join_command: "{{ join_command.stdout }}"
+  run_once: true
+  when: "'master' in group_names"
 
-    - name: Enable and start containerd service
-      systemd:
-        name: containerd
-        state: started
-        enabled: yes
+- name: Debug join command (for verification)
+  debug:
+    msg: "{{ worker_join_command }}"
+  when: "'workers' in group_names and worker_join_command is defined"
 
-    - name: Generate containerd config file if not exists
-      command: containerd config default > /etc/containerd/config.toml
-      args:
-        creates: /etc/containerd/config.toml
+- name: Debug group_names (for verification)
+  debug:
+    var: group_names
 
-    - name: Ensure SystemdCgroup is set to true in containerd config
-      replace:
-        path: /etc/containerd/config.toml
-        regexp: 'SystemdCgroup = false'
-        replace: 'SystemdCgroup = true'
-      register: containerd_config_updated
+- name: Check if worker node is already joined
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: node_joined
+  when: "'workers' in group_names"
 
-    - name: Restart containerd and kubelet if config changed
-      systemd:
-        name: "{{ item }}"
-        state: restarted
-      loop:
-        - containerd
-        - kubelet
-      when: containerd_config_updated.changed
+- name: Reset Kubernetes on Worker Nodes if already joined
+  command: kubeadm reset -f
+  when: "'workers' in group_names and node_joined.stat.exists"
 
-    - name: Check if Kubernetes is already initialized (Master)
-      stat:
-        path: /etc/kubernetes/admin.conf
-      register: k8s_installed
-      when: "'master' in group_names"
+- name: Remove old CNI network config (Worker Nodes)
+  file:
+    path: /etc/cni/net.d
+    state: absent
+  when: "'workers' in group_names and node_joined.stat.exists"
 
-    - name: Initialize Kubernetes on Master
-      command: kubeadm init --pod-network-cidr=10.244.0.0/16
-      register: k8s_init
-      when: "'master' in group_names and not k8s_installed.stat.exists"
+- name: Restart kubelet (Worker Nodes)
+  systemd:
+    name: kubelet
+    state: restarted
+  when: "'workers' in group_names and node_joined.stat.exists"
 
-    - name: Ensure .kube directory exists (Master)
-      file:
-        path: /root/.kube
-        state: directory
-        owner: root
-        group: root
-        mode: '0755'
-      when: "'master' in group_names"
-
-    - name: Copy kubeconfig for root user (Master)
-      copy:
-        src: /etc/kubernetes/admin.conf
-        dest: /root/.kube/config
-        remote_src: yes
-        owner: root
-        group: root
-        mode: '0644'
-      when: "'master' in group_names"
-
-    - name: Download Calico CNI manifest (Master)
-      get_url:
-        url: https://docs.projectcalico.org/manifests/calico.yaml
-        dest: /tmp/calico.yaml
-      when: "'master' in group_names"
-
-    - name: Modify Calico network CIDR to 10.244.0.0/16 (Master)
-      replace:
-        path: /tmp/calico.yaml
-        regexp: '192.168.0.0/16'
-        replace: '10.244.0.0/16'
-      when: "'master' in group_names"
-
-    - name: Apply Calico CNI with modified CIDR (Master)
-      shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f /tmp/calico.yaml
-      args:
-        executable: /bin/bash
-      when: "'master' in group_names"
-
-    - name: Fetch the join command from Master
-      shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command
-      register: join_command
-      run_once: true
-      delegate_to: 192.168.1.140
-      when: "'master' in group_names"
-
-    - name: Store join command as fact
-      set_fact:
-        worker_join_command: "{{ join_command.stdout }}"
-      run_once: true
-      delegate_to: 192.168.1.140
-      when: "'master' in group_names"
-
-    - name: Debug join command (for troubleshooting)
-      debug:
-        msg: "{{ worker_join_command }}"
-      when: "'workers' in group_names and worker_join_command is defined"
-
-    - name: Check if worker node is already joined
-      stat:
-        path: /etc/kubernetes/kubelet.conf
-      register: node_joined
-      when: "'workers' in group_names"
-
-    - name: Join Worker Nodes to Cluster
-      command: "{{ worker_join_command }}"
-      when: "'workers' in group_names and not node_joined.stat.exists and worker_join_command is defined"
+- name: Join Worker Nodes to Cluster
+  command: "{{ worker_join_command }}"
+  when: "'workers' in group_names and not node_joined.stat.exists and worker_join_command is defined"
