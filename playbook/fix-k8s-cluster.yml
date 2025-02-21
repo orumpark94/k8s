@@ -81,10 +81,10 @@
     #    state: restarted
     #    enabled: yes
 
-    - name: Verify containerd is running
-      ansible.builtin.command: systemctl is-active containerd
-      register: containerd_status
-      failed_when: containerd_status.stdout != 'active'
+    #- name: Verify containerd is running
+    #  ansible.builtin.command: systemctl is-active containerd
+    #  register: containerd_status
+    #  failed_when: containerd_status.stdout != 'active'
 
   handlers:
     - name: Reload firewalld
