@@ -9,15 +9,15 @@
       run_once: true
       when: "'master' in group_names"
 
-    - name: Store join command as fact for all nodes
+    - name: Store join command as fact globally
       set_fact:
-        worker_join_command: "{{ join_command.stdout }}"
+        worker_join_command: "{{ hostvars['192.168.1.140']['join_command']['stdout'] }}"
       when: "'master' in group_names"
 
-    - name: Debug join command (for verification)
+    - name: Debug worker_join_command on Worker Nodes
       debug:
         msg: "{{ worker_join_command }}"
-      when: "'workers' in group_names and worker_join_command is defined"
+      when: "'workers' in group_names"
 
     - name: Debug group_names (for verification)
       debug:
